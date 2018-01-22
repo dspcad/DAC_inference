@@ -5,13 +5,7 @@ import os
 import csv
 import tensorflow as tf
 import time
-#import Image
-#from skimage import io
 from PIL import Image
-#from skimage import transform
-#import os
-#os.environ["CUDA_VISIBLE_DEVICES"]="0"
-#import matplotlib.pyplot as plt
 
 
 def drawBBox(img, pred_coordinates, ground_truth_coordinates):
@@ -75,14 +69,6 @@ def drawBBox(img, pred_coordinates, ground_truth_coordinates):
   return img
 
 
-def limitWithinOne(val):
-  if val > 1:
-    return 1
-
-  if val < 0:
-    return 0
-
-  return val
 
 def clipWidth(val):
   if val > 640:
@@ -118,10 +104,6 @@ def checkIOU(label_BBox, pred_BBox):
     else:
       if checkIntersection(label_BBox[i], pred_BBox[i]) == 1:
 
-        #xmin_A = limitWithinOne(pred_BBox[i][0])
-        #xmax_A = limitWithinOne(pred_BBox[i][1])
-        #ymin_A = limitWithinOne(pred_BBox[i][2])
-        #ymax_A = limitWithinOne(pred_BBox[i][3])
 
         xmin_A = clipWidth(pred_BBox[i][0])
         xmax_A = clipWidth(pred_BBox[i][1])
@@ -133,20 +115,6 @@ def checkIOU(label_BBox, pred_BBox):
         xmax_B = label_BBox[i][1]
         ymin_B = label_BBox[i][2]
         ymax_B = label_BBox[i][3]
-
-        #print "pred BBox[0]: ", xmin_A
-        #print "pred BBox[1]: ", xmax_A
-        #print "pred BBox[2]: ", ymin_A
-        #print "pred BBox[3]: ", ymax_A
-        #print "width A: ", (xmax_A-xmin_A)
-        #print "height A: ", (ymax_A-ymin_A)
-
-        #print "label BBox[0]: ", xmin_B
-        #print "label BBox[1]: ", xmax_B
-        #print "label BBox[2]: ", ymin_B
-        #print "label BBox[3]: ", ymax_B
-        #print "width B: ", (xmax_B-xmin_B)
-        #print "height B: ", (ymax_B-ymin_B)
 
 
         xmin_intersection = np.maximum(xmin_A, xmin_B)
@@ -220,88 +188,9 @@ def checkIntersection(BBoxA, BBoxB):
 
   return 0
 
-def checkIntersectionGrid(x, y, BBox):
-  ###############################
-  #       shape[0]: height      #
-  #       shape[1]: width       #
-  ###############################
-
-  xmin = BBox[0] 
-  xmax = BBox[1]
-  ymin = BBox[2]
-  ymax = BBox[3]
-
-  cell_xmin = x*80
-  cell_xmax = cell_xmin + 80
-  cell_ymin = y*60
-  cell_ymax = cell_ymin + 80
-
-  #########################################
-  #     BBox intersects the grid cells    #
-  #########################################
-  target_x = cell_xmin
-  target_y = cell_ymin
-  if target_x >= xmin and target_x <= xmax and target_y >= ymin and target_y <= ymax:
-    return 1
-
-  target_x = cell_xmax
-  target_y = cell_ymin
-  if target_x >= xmin and target_x <= xmax and target_y >= ymin and target_y <= ymax:
-    return 1
-
-  target_x = cell_xmin
-  target_y = cell_ymax
-  if target_x >= xmin and target_x <= xmax and target_y >= ymin and target_y <= ymax:
-    return 1
-
-  target_x = cell_xmax
-  target_y = cell_ymax
-  if target_x >= xmin and target_x <= xmax and target_y >= ymin and target_y <= ymax:
-    return 1
- 
- 
-  #########################################
-  #     BBox is within in a grid cell     #
-  #########################################
-  if xmin >= cell_xmin and ymin >= cell_ymin and xmax <= cell_xmax and ymax <= cell_ymax:
-    return 1
-
-
-  return 0
-
-def expandLabel(Y_, BBox_, batch_size):
-  #print "Y_ shape: ",  Y_.shape
-  #print "BBox_ shape: ",  BBox_.shape
-  Y_labels_with_grids = np.zeros((batch_size, G))
-  #target_classes = np.argmax(Y_, axis=1)
-
-  #print "target_classes shape: ",  target_classes.shape
-  #print "Y_labels_with_grids shape: ",  Y_labels_with_grids.shape
-
-  for idx in range(0, batch_size):
-    for i in range(0, 8):
-      for j in range(0, 6):
-        #print "idx: ", idx
-        #print "i: ", i
-        #print "j: ", j
-        #print target_classes
-        Y_labels_with_grids[idx][i*6+j] = checkIntersectionGrid(i,j, BBox_[idx])
-   
-
-  return Y_labels_with_grids
 
 if __name__ == '__main__':
-  print '===== Start loading the labels of DAC Tracking datasets ====='
-  infile = open("label.txt", "r")
-  lines = infile.readlines()
-
-  lines = map(lambda s: s.strip(), lines)
-  look_up_label_dict = {}
-  for l in lines:
-    elements = l.split()
-    look_up_label_dict[int(elements[1])] = elements[0]
-
-
+  print '===== Start the inference for 2018 DAC competition ====='
   #########################################
   #  Configuration of CNN architecture    #
   #########################################
@@ -320,19 +209,11 @@ if __name__ == '__main__':
   NUM_NEURON_1 = 1024
   NUM_NEURON_2 = 1024
 
-  DROPOUT_PROB = 1.0
 
-  LEARNING_RATE = 1e-3
- 
-
-  # Dropout probability
-  #keep_prob     = tf.placeholder(tf.float32)
 
 
   # initialize parameters randomly
   X      = tf.placeholder(tf.float32, shape=[None, 360,640,3])
-  Y_     = tf.placeholder(tf.float32, shape=[None,K])
-  #Y_GRID = tf.placeholder(tf.float32, shape=[None,G])
   Y_BBOX = tf.placeholder(tf.float32, shape=[None,P])
 
 
@@ -403,61 +284,17 @@ if __name__ == '__main__':
   YY = tf.reshape(pool3, shape=[-1,23*27*NUM_FILTER_6])
 
   fc1 = tf.nn.relu(tf.matmul(YY,W9)+b9)
-  #fc1_drop = tf.nn.dropout(fc1, keep_prob)
-
   fc2 = tf.nn.relu(tf.matmul(fc1,W10)+b10)
-  #fc2_drop = tf.nn.dropout(fc2, keep_prob)
-
   Y = tf.matmul(fc2,W11)+b11
-  Y_class = tf.matmul(Y,label_pred_transform_W)
-  #Y_soft = tf.nn.softmax(Y_class)
 
+  Y_class = tf.matmul(Y,label_pred_transform_W)
   Y_bbox = tf.matmul(tf.nn.relu(Y),W_bbox)+b_bbox
 
-  #total_preds  = tf.concat([Y_soft,Y_bbox],-1)
-  #total_labels = tf.concat([Y_,Y_BBOX],-1)
 
-  #mse_loss = tf.losses.mean_squared_error(labels=Y_GRID, predictions=Y, weights=1e-1)
-  #mse_loss = tf.losses.mean_squared_error(labels=Y_GRID, predictions=Y, weights=1e-1*Y_GRID)
-  #cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=Y_, logits=Y))
-  #mse_loss = tf.losses.mean_squared_error(labels=Y_, predictions=Y_soft)
-
-#  mse_weight = np.full(K+P,0.5)
-#  for i in range(K, K+P):
-#    mse_weight = 0.005
-#
-#  #mse_loss = tf.losses.mean_squared_error(labels=total_labels, predictions=total_preds, weights=mse_weight)
-#  mse_loss = tf.losses.mean_squared_error(labels=Y_BBOX, predictions=Y_bbox)
-#  cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=Y_, logits=Y_class))
-#  total_loss = 1e-4*mse_loss+1e-3*cross_entropy
-#  #mse_loss = tf.losses.mean_squared_error(labels=total_labels, predictions=total_preds)
-#
-#  global_step = tf.Variable(0, trainable=False)
-#  lr = tf.train.exponential_decay(LEARNING_RATE, global_step,
-#                                  100000, 0.1, staircase=True)
-#  #train_step = tf.train.MomentumOptimizer(LEARNING_RATE, 0.9, use_nesterov=True).minimize(total_loss)
-#  train_step = tf.train.MomentumOptimizer(lr, 0.9).minimize(total_loss, global_step=global_step)
-#  #train_step = tf.train.MomentumOptimizer(lr, 0.9).minimize(cross_entropy, global_step=global_step)
-#  #train_step = tf.train.GradientDescentOptimizer(learning_rate).minimize(cross_entropy, global_step=global_step)
-
-
-  correct_prediction = tf.equal(tf.argmax(Y_class, 1), tf.argmax(Y_, 1))
-  #correct_prediction = tf.equal(tf.argmax(Y_class, 1), tf.argmax(Y_, 1))
-  correct_sum = tf.reduce_sum(tf.cast(correct_prediction, tf.float32))
-  accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
   # Add ops to save and restore all the variables.
   saver = tf.train.Saver()
-
-  #train_data_path = []
-  #for name in label_dict.keys():
-  #  print "/home/hhwu/tracking/data_training/train_%s.tfrecords" % name
-  #  train_data_path.append("/home/hhwu/tracking/data_training/train_%s.tfrecords" % name)
-  #  #train_data_path.append("/mnt/ramdisk/tf_data/train_%d.tfrecords" % i)
-
-
-
-  valid_datapath = "/home/nvidia/tensorflow_work/DAC-Contest-GPU-v1/images"
+  valid_datapath = "/home/nvidia/tensorflow_work/DAC_inference/images"
 
   file_list = []
   for dirpath, dirnames, filenames in os.walk(valid_datapath):
@@ -468,7 +305,7 @@ if __name__ == '__main__':
 
   img_list = []
   for f_name in file_list:
-    f_path = "/home/nvidia/tensorflow_work/DAC-Contest-GPU-v1/images/%s" % f_name
+    f_path = "/home/nvidia/tensorflow_work/DAC_inference/images/%s" % f_name
     img_list.append(np.array(Image.open(f_path)))
 
   
@@ -487,41 +324,33 @@ if __name__ == '__main__':
   config = tf.ConfigProto()
   config.gpu_options.per_process_gpu_memory_fraction=0.4
   with tf.Session(config=config) as sess:
-#  with tf.Session() as sess:
-    #sess.run(tf.global_variables_initializer())
-    # Initialize all global and local variables
-    #init_op = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
-    #sess.run(init_op)
-
     sess.run(tf.global_variables_initializer())
-    #sess.run(tf.local_variables_initializer())
 
     # Restore variables from disk.
     saver.restore(sess, "/home/nvidia/tensorflow_work/TX2_tracking/checkpoint/model_small_trained.ckpt")
     print "Model %s restored." % ("model_small_trained")
 
 
-    #x, y = batchRead(class_name, mean_img, pool)
-
-
-   
-
+    batch_imgs = np.zeros((50,360,640,3))
     print "Inference Starts..."
     valid_accuracy = 0.0
     valid_IOU = 0.0
     time_start=time.time()
-    for i in range(0,10):
-      batch_imgs = []
-      for j in range(0,100):
-        if len(batch_imgs) == 0:
-          batch_imgs = img_list[i*100+j]
-        else:
-          batch_imgs = np.vstack((batch_imgs, img_list[i*100+j]))
+    for i in range(0,20):
+      #batch_imgs = []
+      for j in range(0,50):
+        #if len(batch_imgs) == 0:
+        #  batch_imgs = img_list[i*100+j]
+        #else:
+        #  batch_imgs = np.vstack((batch_imgs, img_list[i*100+j]))
+        #print img_list[i*100+j].shape
+        #print batch_imgs.shape
+        batch_imgs[j,:,:,:] = img_list[i*50+j]
 
 
-      batch_imgs = batch_imgs.reshape(100,360,640,3)
+      #batch_imgs = batch_imgs.reshape(100,360,640,3)
       pred_bbox = Y_bbox.eval(feed_dict={X: batch_imgs})
-      print pred_bbox
+      #print pred_bbox
 
    
       #valid_accuracy += correct_sum.eval(feed_dict={X: test_x, Y_: test_y, Y_BBOX: box_coord})
@@ -538,7 +367,7 @@ if __name__ == '__main__':
     time_end = time.time()
     resultRunTime = time_end-time_start
     print "Spent time: ", resultRunTime  
-    print "FPS: ", 10000/resultRunTime  
+    print "FPS: ", 1000/resultRunTime  
     print "Validation Accuracy: %f (%.1f/10000)" %  (valid_accuracy/10000, valid_accuracy)
     print "Validation Mean IOU: %f (%.1f/100)" %  (valid_IOU/100, valid_IOU)
 
