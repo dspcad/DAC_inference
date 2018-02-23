@@ -21,7 +21,7 @@ if __name__ == "__main__":
     ##            |xml
 
     ## !!!! Please specify your team name here
-    teamName = 'hhwu'
+    teamName = 'CREDIT'
     ## !!!! please specify the dir here, and please put all the images for test in the folder "images".
     ## Important! You can specify the folder in your local test. But for the sumission, DAC folder is fixed as follows
     #DAC = '/home/DACSDC_GPU' ## uncomment this line when submitting your code
@@ -144,7 +144,7 @@ if __name__ == "__main__":
       sess.run(tf.global_variables_initializer())
  
       # Restore variables from disk.
-      model_name = "/home/nvidia/tensorflow_work/TX2_tracking/checkpoint/model_small_trained.ckpt"
+      model_name = "./trained_model/model_small_trained.ckpt"
       saver.restore(sess, model_name)
       print "Model %s restored." % (model_name)
 

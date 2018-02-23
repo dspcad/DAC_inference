@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 import numpy as np
+import cv2
 import os
 import csv
 import tensorflow as tf
@@ -294,21 +295,21 @@ if __name__ == '__main__':
 
   # Add ops to save and restore all the variables.
   saver = tf.train.Saver()
-  valid_datapath = "/home/nvidia/tensorflow_work/DAC_inference/images"
-
-  file_list = []
-  for dirpath, dirnames, filenames in os.walk(valid_datapath):
-    print "The number of files: %d" % len(filenames)
-    #print filenames
-
-    file_list = filenames
-
-  img_list = []
-  for f_name in file_list:
-    f_path = "/home/nvidia/tensorflow_work/DAC_inference/images/%s" % f_name
-    img_list.append(np.array(Image.open(f_path)))
-
-  
+#  valid_datapath = "/home/nvidia/tensorflow_work/DAC_inference/images"
+#
+#  file_list = []
+#  for dirpath, dirnames, filenames in os.walk(valid_datapath):
+#    print "The number of files: %d" % len(filenames)
+#    #print filenames
+#
+#    file_list = filenames
+#
+#  img_list = []
+#  for f_name in file_list:
+#    f_path = "/home/nvidia/tensorflow_work/DAC_inference/images/%s" % f_name
+#    img_list.append(np.array(Image.open(f_path)))
+#
+#  
 #  batch_imgs = []
 #  for i in range(0,10):
 #    if len(batch_imgs) == 0:
@@ -322,12 +323,12 @@ if __name__ == '__main__':
 
 
   config = tf.ConfigProto()
-  config.gpu_options.per_process_gpu_memory_fraction=0.4
+  config.gpu_options.per_process_gpu_memory_fraction=0.35
   with tf.Session(config=config) as sess:
     sess.run(tf.global_variables_initializer())
 
     # Restore variables from disk.
-    saver.restore(sess, "/home/nvidia/tensorflow_work/TX2_tracking/checkpoint/model_small_trained.ckpt")
+    saver.restore(sess, "./trained_model/model_small_trained.ckpt")
     print "Model %s restored." % ("model_small_trained")
 
 
@@ -336,33 +337,54 @@ if __name__ == '__main__':
     valid_accuracy = 0.0
     valid_IOU = 0.0
     time_start=time.time()
-    for i in range(0,20):
-      #batch_imgs = []
-      for j in range(0,50):
-        #if len(batch_imgs) == 0:
-        #  batch_imgs = img_list[i*100+j]
-        #else:
-        #  batch_imgs = np.vstack((batch_imgs, img_list[i*100+j]))
-        #print img_list[i*100+j].shape
-        #print batch_imgs.shape
-        batch_imgs[j,:,:,:] = img_list[i*50+j]
 
 
-      #batch_imgs = batch_imgs.reshape(100,360,640,3)
-      pred_bbox = Y_bbox.eval(feed_dict={X: batch_imgs})
-      #print pred_bbox
+    idx = 0
+    file_path = "/home/nvidia/src/%04d.jpg" % idx
+    batchImageData = np.zeros((1, 360, 640, 3))
+    while 1:
+      while not os.path.exists(file_path):
+        print "waiting for %s ..." % file_path
+        time.sleep(0.1)
 
-   
-      #valid_accuracy += correct_sum.eval(feed_dict={X: test_x, Y_: test_y, Y_BBOX: box_coord})
-      #valid_IOU += np.mean(checkIOU(box_coord, pred_bbox))
-      print "%d batch is done" % i
 
-      #for j in range(0, 100):
-      #  bbox_image = drawBBox(test_x[j],pred_bbox[j], box_coord[j])
-      #  #print "Image: ", bbox_image
-      #  #print np.argmax(test_y[j])
-      #  #print look_up_label_dict[np.argmax(test_y[j])]
-      #  io.imsave("%s_%d_%s.%s" % ("./val_images/test_img", 100*i+j, look_up_label_dict[np.argmax(test_y[j])], 'jpg'), test_x[j]/256.0)
+      img = cv2.imread(file_path, 1)
+      batchImageData[0,:,:,:] = img
+      pred_bbox = Y_bbox.eval(feed_dict={X: batchImageData})
+      print file_path
+      print pred_bbox
+      idx = idx + 1
+      file_path = "/home/nvidia/src/%04d.jpg" % idx
+
+
+
+#    for i in range(0,20):
+#      #batch_imgs = []
+#      for j in range(0,50):
+#        #if len(batch_imgs) == 0:
+#        #  batch_imgs = img_list[i*100+j]
+#        #else:
+#        #  batch_imgs = np.vstack((batch_imgs, img_list[i*100+j]))
+#        #print img_list[i*100+j].shape
+#        #print batch_imgs.shape
+#        batch_imgs[j,:,:,:] = img_list[i*50+j]
+#
+#
+#      #batch_imgs = batch_imgs.reshape(100,360,640,3)
+#      pred_bbox = Y_bbox.eval(feed_dict={X: batch_imgs})
+#      #print pred_bbox
+#
+#   
+#      #valid_accuracy += correct_sum.eval(feed_dict={X: test_x, Y_: test_y, Y_BBOX: box_coord})
+#      #valid_IOU += np.mean(checkIOU(box_coord, pred_bbox))
+#      print "%d batch is done" % i
+#
+#      #for j in range(0, 100):
+#      #  bbox_image = drawBBox(test_x[j],pred_bbox[j], box_coord[j])
+#      #  #print "Image: ", bbox_image
+#      #  #print np.argmax(test_y[j])
+#      #  #print look_up_label_dict[np.argmax(test_y[j])]
+#      #  io.imsave("%s_%d_%s.%s" % ("./val_images/test_img", 100*i+j, look_up_label_dict[np.argmax(test_y[j])], 'jpg'), test_x[j]/256.0)
 
     time_end = time.time()
     resultRunTime = time_end-time_start
